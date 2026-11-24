@@ -1,0 +1,28 @@
+# Servicios locales para desarrollo: PostgreSQL 16 + PostGIS y Redis 7.
+# Uso: pnpm db:up   (desde la raíz del repositorio)
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: transporte-postgres
+    environment:
+      POSTGRES_USER: transporte
+      POSTGRES_PASSWORD: transporte
+      POSTGRES_DB: transporte
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U transporte"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: transporte-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:

@@ -1,0 +1,42 @@
+digraph G {
+  rankdir=LR;
+  graph [fontname="DejaVu Sans", fontsize=11, nodesep=0.5, ranksep=0.9, bgcolor="white"];
+  node  [fontname="DejaVu Sans", fontsize=10, shape=box, style="rounded,filled", color="#1f4e79", fillcolor="#eaf2fb", penwidth=1.2];
+  edge  [fontname="DejaVu Sans", fontsize=8.5, color="#44546a"];
+
+  subgraph cluster_clients {
+    label="Clientes"; style="rounded,dashed"; color="#8497b0";
+    pwa  [label="PWA Viajeros\nNext.js + TypeScript\nService Worker + Web Push"];
+    and  [label="App Conductores\nKotlin + Compose\nForeground Service GPS\nCola offline (Room)"];
+  }
+
+  subgraph cluster_backend {
+    label="Backend centralizado (Google Cloud Run)"; style="rounded"; color="#1f4e79";
+    api  [label="API REST NestJS\n/v1 (OpenAPI)\nAuth JWT · Roles · Validación", fillcolor="#d6e4f5"];
+    ws   [label="Gateway tiempo real\nSocket.IO\nsalas: room:{id} · trip:{id}", fillcolor="#d6e4f5"];
+    work [label="Workers (BullMQ)\nrecordatorios · cierre de hora límite\nETA / proximidad · retención GPS", fillcolor="#d6e4f5"];
+  }
+
+  pg    [label="PostgreSQL 16 + PostGIS\n(datos de negocio, historial)", shape=cylinder, fillcolor="#fff2cc", color="#bf9000"];
+  redis [label="Redis\núltima posición · pub/sub\ncolas · rate limit", shape=cylinder, fillcolor="#fff2cc", color="#bf9000"];
+
+  subgraph cluster_ext {
+    label="Servicios externos"; style="rounded,dashed"; color="#8497b0";
+    gmp  [label="Google Maps Platform\nMaps JS / Maps SDK Android\nRoutes · Route Optimization\nGeocoding · Places", fillcolor="#e2f0d9", color="#548235"];
+    fcm  [label="Firebase Cloud\nMessaging (Android)", fillcolor="#e2f0d9", color="#548235"];
+    wp   [label="Web Push (VAPID)\nChrome · Firefox · Safari", fillcolor="#e2f0d9", color="#548235"];
+    mail [label="Correo transaccional\n(recuperar contraseña)", fillcolor="#e2f0d9", color="#548235"];
+  }
+
+  pwa -> api  [label="HTTPS: login, salas,\nconfirmaciones, direcciones"];
+  and -> api  [label="HTTPS: gestión, rutas,\nasistencia"];
+  and -> ws   [label="WSS: envía GPS cada 5–10 s;\nrecibe confirmaciones y solicitudes", dir=both];
+  pwa -> ws [label="WSS (solo lectura): posición bus,\nETA, cambios en vivo", dir=both];
+  
+  api -> pg; ws -> redis; api -> redis; work -> pg; work -> redis;
+  api -> gmp  [label="rutas / geocodificación\n(clave de servidor)"];
+  work -> gmp [label="ETA"];
+  work -> fcm; work -> wp; api -> mail;
+  fcm -> and [style=dotted, label="push"];
+  wp  -> pwa [style=dotted, label="push"];
+}
